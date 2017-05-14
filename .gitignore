@@ -1,0 +1,14 @@
+# package-specific ignores
+venv
+
+# Python ignores
+*.pyc
+*__pycache__
+*.egg-info
+
+# PyPi ignores
+dist
+build
+
+# Editor ignores
+*.swp
