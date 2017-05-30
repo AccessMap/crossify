@@ -12,3 +12,7 @@ have sidewalks?', but are not as good for knowing exactly where a sidewalk is
 and how it connects to other sidewalks (e.g., places to cross the street,
 curb ramps, etc). This package helps to answer where connectivity across sidewalk islands are
 by generating best quess crossings at legal locations.
+
+## Install
+clone repo to local folder with osm_sidewalk_staging main file
+pip install local copy
