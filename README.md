@@ -1,4 +1,4 @@
-# Sidewalkify
+# Crossify
 
 `crossify` is a Python library and command line application for drawing
 crossings from sidewalk datasets like those produced in 'sidewalkify.
