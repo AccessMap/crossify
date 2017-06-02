@@ -1,4 +1,3 @@
-from . import draw, graph
+from . import cross
 
-
-__version__ = '0.1.0'
+__version__ = '0.0.1'
