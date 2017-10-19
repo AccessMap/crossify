@@ -24,6 +24,7 @@ config = {
     'install_requires': ['pandas',
                          'geopandas',
                          'numpy',
+                         'rtree',
                          'Shapely'],
     'packages': find_packages(),
     'include_package_data': True,

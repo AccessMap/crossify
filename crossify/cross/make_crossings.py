@@ -251,7 +251,7 @@ def make_graph(sidewalks, streets):
         if group.shape[0] > 1:
             # Want to keep the shortest segments - so identify the too-long
             # ones for removal
-            order = group.geometry.length.order().index
+            order = group.geometry.length.sort_values().index
             return group.loc[order[1:], 'crossing_id']
 
     remove = melted.groupby(['corner_id', 'st_idx']).apply(remove_redundant)
