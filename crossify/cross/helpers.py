@@ -37,8 +37,6 @@ def get_corners(sidewalks):
     ends = gpd.GeoDataFrame({
         'sw_index': 2 * list(sidewalks.index),
         # 'streets_pkey': 2 * list(sidewalks['streets_pkey']),
-        'st_id': 2 * list(sidewalks['st_id']),
-        'side': 2 * list(sidewalks['side']),
         'endtype': n * ['start'] + n * ['end'],
         # 'layer': 2 * list(sidewalks['layer']),
         'geometry': pd.concat([starts, ends])

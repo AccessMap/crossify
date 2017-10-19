@@ -118,18 +118,6 @@ def make_graph(sidewalks, streets):
                 corner_snapped = True
                 point = nearest.geometry
 
-            if terminating1 and corner_snapped:
-                # Both are terminating endpoints
-                sw1 = sidewalks.loc[row['sw1_index']]
-                sw2 = sidewalks.loc[nearest['sw1_index']]
-                if sw1['st_id'] == sw2['st_id']:
-                    # They're on the same street
-                    if sw1['side'] != sw2['side']:
-                        # They're on opposite sides of the street
-                        # Don't use this candidate - it's basically a dead end.
-                        n += 1
-                        continue
-
             candidate = geometry.LineString([corner, point])
             # Distance of farthest
             if candidate.length < MAX_DIST and candidate.length > 1e-5:
