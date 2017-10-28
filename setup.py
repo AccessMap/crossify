@@ -31,6 +31,7 @@ config = {
     'install_requires': ['click',
                          'geopandas',
                          'numpy',
+                         'osmnx',
                          'Shapely'],
     'packages': find_packages(),
     'include_package_data': True,
