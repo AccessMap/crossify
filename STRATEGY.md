@@ -24,18 +24,20 @@ step one.
 intersection node are ignored. All further logic happens on a
 per-intersection group basis.
 
-4. Create a buffer of 30 meters (by default) around the intersection's node(s)
+4. Create a buffer of 10 meters (by default) around the intersection's node(s)
 and do an intersection operation on the streets/sidewalks: all streets and
-sidewalks are clipped at 30 meters from an intersection node. In most cases,
+sidewalks are clipped at 10 meters from an intersection node. In most cases,
 this will mean that all streets and sidewalks are cut off by a 30-meter radius
 circle. If necessary, streets are temporarily extended to be 30 meters long.
+Idea: possibly use polygonized street data?
+Idea: use voronoi polygons?
 
 5. Select all incoming streets and split the buffer by them. This aids the
 algorithm in ensure a connection across the street, guaranteeing each end of a
 crossing connects to left or right.
 
 6. Extend 'up' each street in 1-meter increments, finding the
-closest sidewalk on each side.
+closest sidewalk on each side. Only extend at most half-way down the street.
 
 7. If each sidewalk side differs too much in length, the entire crossing is
 discarded. The problem this is attempting to solve is one where incoming
