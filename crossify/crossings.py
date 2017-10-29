@@ -99,8 +99,7 @@ def make_crossing(street, sidewalks, streets_list):
             return None
         sidewalk_sides[side] = side_sidewalks
 
-    lines = []
-    distances = []
+    candidates = []
     for dist in np.arange(start_dist, st_distance, INCREMENT):
         crossing = crossing_from_dist(street, dist,
                                       sidewalk_sides['left'],
@@ -116,10 +115,12 @@ def make_crossing(street, sidewalks, streets_list):
 
         # The sides have passed the filter! Add their data to the list
         if crosses_self and not crosses_others:
-            lines.append(crossing)
-            distances.append(dist)
+            candidates.append({
+                'crossing': crossing,
+                'distance': dist
+            })
 
-    if not lines:
+    if not candidates:
         return None
 
     # Return the shortest crossing.
@@ -130,10 +131,10 @@ def make_crossing(street, sidewalks, streets_list):
     # distance_metric = 1 / np.array([line['distance'] for line in lines])
 
     # lengths * distance_metric
-    def metric(crossing, distance):
-        return crossing.length + 1e-1 * distance
+    def metric(candidate):
+        return candidate['crossing'].length + 1e-1 * candidate['distance']
 
-    return sorted(zip(lines, distances), key=lambda x: metric(x[0], x[1]))[0][0]
+    return sorted(candidates, key=metric)[0]['crossing']
 
 
 def get_side_sidewalks(offset, side, street, sidewalks):
