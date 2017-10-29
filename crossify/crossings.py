@@ -1,6 +1,6 @@
 import geopandas as gpd
 import numpy as np
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
 
 
 def make_crossings(intersections_dict, sidewalks):
@@ -15,14 +15,9 @@ def make_crossings(intersections_dict, sidewalks):
         for street in data['streets']:
             new_crossing = make_crossing(street, sidewalks, data['streets'])
             if new_crossing is not None:
-                st_crossings.append({
-                    'geometry': new_crossing['crossing'],
-                    'too_long': new_crossing['too_long'],
-                    'crosses_self': new_crossing['crosses_self'],
-                    'crosses_others': new_crossing['crosses_others'],
-                    'ixn': i
-                })
-    st_crossings = gpd.GeoDataFrame(st_crossings)
+                st_crossings.append(new_crossing)
+
+    st_crossings = gpd.GeoDataFrame({'geometry': st_crossings})
     st_crossings = st_crossings[st_crossings.type == 'LineString']
     st_crossings = st_crossings[st_crossings.is_valid]
 
@@ -84,51 +79,45 @@ def make_crossing(street, sidewalks, streets_list):
     INCREMENT = 2
     MAX_DIST_ALONG = 25
     MAX_CROSSING_DIST = 30
+    OFFSET = MAX_CROSSING_DIST / 2
 
     st_distance = min(street.length / 2, MAX_DIST_ALONG)
     start_dist = min(START_DIST, st_distance / 2)
 
+    # Create buffer for the street search area, one for each side, then find
+    # the sidewalks intersecting that buffer - use as candidates for
+    # right/left
+    street_cut = cut(street, st_distance)[0]
+
+    sidewalk_sides = {}
+
+    for side in ('left', 'right'):
+        side_sidewalks = get_side_sidewalks(OFFSET, side, street_cut,
+                                            sidewalks)
+        if side_sidewalks.shape[0] < 1:
+            # One of the sides has no sidewalks to connect to! Abort!
+            return None
+        sidewalk_sides[side] = side_sidewalks
+
     lines = []
+    distances = []
     for dist in np.arange(start_dist, st_distance, INCREMENT):
-        # Grab a point along the outgoing street
-        point = street.interpolate(dist)
-        # Extract the street line segment associated with the point (i.e. if
-        # the street has several segments, get just one, described by 2 points)
-        coords = street.coords
-        for i in range(len(coords) - 1):
-            segment = LineString((coords[i], coords[i + 1]))
-            if segment.distance(point) < 1e-8:
-                break
-        point_l, point_r = closest_point_right_left(point, segment, sidewalks)
-        if point_l is None or point_r is None:
-            # Skip! Didn't find points on right/left
-            continue
+        crossing = crossing_from_dist(street, dist,
+                                      sidewalk_sides['left'],
+                                      sidewalk_sides['right'])
 
         # We now have the lines on the left and right sides. Let's now filter
         # and *not* append if either are invalid
-        # (1) They cannot cross any other street line
-        # (2) They cannot be too far away (MAX_DIST)
-        crossing = LineString([point_l, point_r])
 
         # if side.length > MAX_DIST or crosses_streets(side, streets):
-        too_long = False
-        if crossing.length > MAX_CROSSING_DIST:
-            too_long = True
         other_streets = [st for st in streets_list if st != street]
-        street_cut = cut(street, st_distance)[0]
         crosses_self, crosses_others = valid_crossing(crossing, street_cut,
                                                       other_streets)
 
         # The sides have passed the filter! Add their data to the list
-        if crosses_self and not crosses_others and not too_long:
-            lines.append({
-                'distance': dist,
-                'crossing': crossing,
-                'too_long': str(too_long),
-                'crosses_self': str(crosses_self),
-                'crosses_others': str(crosses_others),
-                'street': street_cut
-            })
+        if crosses_self and not crosses_others:
+            lines.append(crossing)
+            distances.append(dist)
 
     if not lines:
         return None
@@ -141,65 +130,53 @@ def make_crossing(street, sidewalks, streets_list):
     # distance_metric = 1 / np.array([line['distance'] for line in lines])
 
     # lengths * distance_metric
-    def metric(crossing):
-        return crossing['crossing'].length + 1e-1 * crossing['distance']
+    def metric(crossing, distance):
+        return crossing.length + 1e-1 * distance
 
-    return sorted(lines, key=metric)[0]
-
-
-def side_of_segment(point, segment):
-    '''Given a point and a line segment, determine which side of the line the
-    point is on (from perspective of the line). Returns 0 if the point is
-    exactly on the line (very unlikely given floating point math), 1 if it's
-    on the right, and -1 if it's on the left.
-
-    :param point: Point on some side of a line segment.
-    :type point: shapely.geometry.Point
-    :param segment: Line segment made up of only two points.
-    :type segment: shapely.geometry.LineString
-    :returns: int
-
-    '''
-    x, y = point.coords[0]
-    (x1, y1), (x2, y2) = segment.coords
-    side = np.sign((x - x1) * (y2 - y1) - (y - y1) * (x2 - x1))
-
-    return side
+    return sorted(zip(lines, distances), key=lambda x: metric(x[0], x[1]))[0][0]
 
 
-def closest_point_right_left(point, segment, sidewalks):
-    # Get the 10 closest sidewalks (bounding box closeness)
-    query = sidewalks.sindex.nearest(point.bounds, 10, objects=True)
-    sidewalk_ids = [x.object for x in query]
-    # TODO: this is a fairly slow step. Idea:
-    # Use a representative point to ask the 'left or right side' question first
-    # so there's no need to calculate distance / make a line if that side
-    # already has a point
-    sw_geoms = sidewalks.geometry.loc[sidewalk_ids]
-    sw_distances = sw_geoms.distance(point)
-    sorted_sw_geoms = sw_geoms.loc[sw_distances.sort_values().index]
+def get_side_sidewalks(offset, side, street, sidewalks):
+    offset = street.parallel_offset(offset, side, 0, 1, 1)
+    if offset.type == 'MultiLineString':
+        # Convert to LineString
+        coords = []
+        for geom in offset.geoms:
+            coords += list(geom.coords)
+        offset = LineString(coords)
+    st_buffer = Polygon(list(street.coords) +
+                        list(offset.coords)[::-1] +
+                        [street.coords[0]])
+    query = sidewalks.sindex.intersection(st_buffer.bounds, objects=True)
+    side_sidewalks = sidewalks.loc[[q.object for q in query]]
 
-    left = None
-    right = None
+    return side_sidewalks
 
-    for idx, geom in sorted_sw_geoms.iteritems():
-        closest_point = geom.interpolate(geom.project(point))
-        side = side_of_segment(closest_point, segment)
-        if (left and side < 0) or (right and side >= 0):
-            # We've already found a sidewalk for this side
-            continue
-        if side < 0:
-            left = closest_point
-        else:
-            right = closest_point
 
-    return left, right
+def crossing_from_dist(street, dist, sidewalks_left, sidewalks_right):
+    # Grab a point along the outgoing street
+    point = street.interpolate(dist)
+
+    # Find the closest left and right points
+    def closest_line_to_point(point, lines):
+        sorted_side = lines.distance(point).sort_values()
+        closest = lines.loc[sorted_side.index[0], 'geometry']
+        return closest.interpolate(closest.project(point))
+
+    left = closest_line_to_point(point, sidewalks_left)
+    right = closest_line_to_point(point, sidewalks_right)
+
+    # We now have the lines on the left and right sides. Let's now filter
+    # and *not* append if either are invalid
+    # (1) They cannot cross any other street line
+    # (2) They cannot be too far away (MAX_DIST)
+    crossing = LineString([left, right])
+
+    return crossing
 
 
 def valid_crossing(crossing, street, other_streets):
     crosses_street = street.intersects(crossing)
-    # if not crosses_street:
-    #     return False
     crosses_others = [other.intersects(crossing) for other in other_streets]
 
     return crosses_street, any(crosses_others)
