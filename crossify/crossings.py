@@ -74,50 +74,55 @@ def make_crossing(street, sidewalks, streets_list):
     # shouldn't require this and we should use a max distance value as well
     # street = street.interpolate(0.5, normalized=True)
 
+    # New idea: use street buffers of MAX_CROSSING_DIST + small delta, use
+    # this to limit the sidewalks to be considered at each point. Fewer
+    # distance and side-of-line queries!
+
     # FIXME: use 'z layer' data if available (e.g. OSM)
 
-    lines = []
-    MAX_DIST_ALONG = 20
-    MAX_DIST = 25
+    START_DIST = 4
+    INCREMENT = 2
+    MAX_DIST_ALONG = 25
+    MAX_CROSSING_DIST = 30
 
     st_distance = min(street.length / 2, MAX_DIST_ALONG)
-    street_cut = cut(street, st_distance)[0]
+    start_dist = min(START_DIST, st_distance / 2)
 
-    for dist in np.arange(1e-6, st_distance, 1):
+    lines = []
+    for dist in np.arange(start_dist, st_distance, INCREMENT):
+        # Grab a point along the outgoing street
         point = street.interpolate(dist)
+        # Extract the street line segment associated with the point (i.e. if
+        # the street has several segments, get just one, described by 2 points)
         coords = street.coords
         for i in range(len(coords) - 1):
             segment = LineString((coords[i], coords[i + 1]))
             if segment.distance(point) < 1e-8:
                 break
-        left_line, right_line = closest_line_right_left(point, segment,
-                                                        sidewalks)
-        if left_line is None or right_line is None:
-            # Skip! Didn't find lines on right/left
+        point_l, point_r = closest_point_right_left(point, segment, sidewalks)
+        if point_l is None or point_r is None:
+            # Skip! Didn't find points on right/left
             continue
 
         # We now have the lines on the left and right sides. Let's now filter
         # and *not* append if either are invalid
         # (1) They cannot cross any other street line
         # (2) They cannot be too far away (MAX_DIST)
-        crossing = LineString([left_line.coords[-1], right_line.coords[-1]])
+        crossing = LineString([point_l, point_r])
 
         # if side.length > MAX_DIST or crosses_streets(side, streets):
         too_long = False
-        if crossing.length > MAX_DIST:
+        if crossing.length > MAX_CROSSING_DIST:
             too_long = True
         other_streets = [st for st in streets_list if st != street]
+        street_cut = cut(street, st_distance)[0]
         crosses_self, crosses_others = valid_crossing(crossing, street_cut,
                                                       other_streets)
-#         if not valid_crossing(side, street, streets_list):
-#             invalid = 'yes'
 
         # The sides have passed the filter! Add their data to the list
         if crosses_self and not crosses_others and not too_long:
             lines.append({
                 'distance': dist,
-                'left': left_line,
-                'right': right_line,
                 'crossing': crossing,
                 'too_long': str(too_long),
                 'crosses_self': str(crosses_self),
@@ -162,7 +167,7 @@ def side_of_segment(point, segment):
     return side
 
 
-def closest_line_right_left(point, segment, sidewalks):
+def closest_point_right_left(point, segment, sidewalks):
     # Get the 10 closest sidewalks (bounding box closeness)
     query = sidewalks.sindex.nearest(point.bounds, 10, objects=True)
     sidewalk_ids = [x.object for x in query]
@@ -170,43 +175,23 @@ def closest_line_right_left(point, segment, sidewalks):
     # Use a representative point to ask the 'left or right side' question first
     # so there's no need to calculate distance / make a line if that side
     # already has a point
+    sw_geoms = sidewalks.geometry.loc[sidewalk_ids]
+    sw_distances = sw_geoms.distance(point)
+    sorted_sw_geoms = sw_geoms.loc[sw_distances.sort_values().index]
 
-    # Draw a line from the point on the street to each sidewalk, evaluate
-    def draw_half_line(point, sidewalk_geom):
-        sidewalk = sidewalks.loc[sidewalk_id, 'geometry']
-        distance_along_sidewalk = sidewalk.project(point)
-        sw_point = sidewalk.interpolate(distance_along_sidewalk)
-        half_line = LineString([point.coords[0], sw_point.coords[0]])
-        return half_line
-
-    half_lines = []
-    for sidewalk_id in sidewalk_ids:
-        sidewalk_geom = sidewalks.loc[sidewalk_id, 'geometry']
-        half_line = draw_half_line(point, sidewalk_geom)
-        half_lines.append(half_line)
-
-    half_lines = sorted(half_lines, key=lambda x: x.length)
-
-    # Loop over each line until left/right are found
     left = None
     right = None
 
-    for line in half_lines:
-        if left is not None and right is not None:
-            break
-        side = side_of_segment(Point(line.coords[-1]), segment)
+    for idx, geom in sorted_sw_geoms.iteritems():
+        closest_point = geom.interpolate(geom.project(point))
+        side = side_of_segment(closest_point, segment)
+        if (left and side < 0) or (right and side >= 0):
+            # We've already found a sidewalk for this side
+            continue
         if side < 0:
-            # Point is on left side
-            if left is None:
-                left = line
-            else:
-                continue
+            left = closest_point
         else:
-            # Point is on the right side
-            if right is None:
-                right = line
-            else:
-                continue
+            right = closest_point
 
     return left, right
 
