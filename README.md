@@ -1,7 +1,15 @@
 # Crossify
 
-`crossifyify` is a Python library and command line application for drawing
+`crossify` is a Python library and command line application for drawing
 street crossing lines from street centerline and sidewalk centerline data.
+
+`crossify` has two usage modes:
+
+- It can automatically fetch sidewalk data from OpenStreetMap
+- It can read sidewalk data from a GIS file (e.g. GeoJSON or shapefile)
+
+In both modes, it fetches street data from OpenStreetMap and uses the sidewalk
+and street data to construct likely crossing locations.
 
 ## Introduction
 
@@ -28,20 +36,33 @@ to Python 2.
 Once installed, `crossify` is available both as a command line application
 and a Python library.
 
-#### CLI
+### Sidewalks should be fetched from OpenStreetMap
+
+To fetch sidewalk data from OpenStreetMap, use the `from_bbox` command:
+
+    crossify from_bbox -- <west> <south> <east> <north> <output file>
+
+The values of west, south, east, and north define a rectangular bounding box
+for your query, and should be in terms of latitude (south, north) and longitude
+(west, east). The use of a double dash is necessary for the use of negative
+coordinates not getting parsed as command line options (see the example below).
 
 Example:
 
-    crossify <streets.shp> <sidewalks.shp> <output.shp>
+    crossify from_bbox -- -122.31846 47.65458 -122.31004 47.65783
+    test/output/crossings.geojson
 
-##### Arguments
+### A sidewalks file is provided
 
-The input file can be any file type readable by `geopandas.read_file`, which
-should be anything readable by `fiona`, i.e. GDAL.
+If you want to provide your own sidewalks layer, use the `from_file` command:
 
-For example, you could also use a GeoJSON input file:
+    crossify from_file <sidewalks file> <output file>
 
-    crossify <streets.geojson> <sidewalks.geojson> <output.geojson>
+Example:
+
+    crossify from_file test/input/sidewalks_udistrict.geojson
+    test/output/crossings.geojson
+
 
 #### Python Library
 
