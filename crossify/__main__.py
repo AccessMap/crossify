@@ -48,25 +48,28 @@ def from_file(sidewalks_in, outfile):
 @click.argument('east')
 @click.argument('north')
 @click.argument('outfile')
-def from_bbox(west, south, east, north, outfile):
+@click.option('--debug', is_flag=True)
+def from_bbox(west, south, east, north, outfile, debug):
     #
     # Read, fetch, and standardize data
     #
 
     # Note: all are converted to WGS84 by default
     sidewalks = io.fetch_sidewalks(west, south, east, north)
-    core(sidewalks, outfile)
+    core(sidewalks, outfile, debug)
 
 
-def core(sidewalks, outfile):
+def core(sidewalks, outfile, debug=False):
     #
     # Read, fetch, and standardize data
     #
 
     # Note: all are converted to WGS84 by default
+    click.echo('Fetching street network from OpenStreetMap...')
     G_streets = io.fetch_street_graph(sidewalks)
 
     # Work in UTM
+    click.echo('Generating street graph...')
     G_streets_u = ox.projection.project_graph(G_streets)
     sidewalks_u = ox.projection.project_gdf(sidewalks)
 
@@ -74,6 +77,7 @@ def core(sidewalks, outfile):
     G_undirected_u = ox.save_load.get_undirected(G_streets_u)
 
     # Extract streets from streets graph
+    click.echo('Extracting geospatial data from street graph...')
     streets = ox.save_load.graph_to_gdfs(G_undirected_u, nodes=False,
                                          edges=True)
     streets.crs = sidewalks_u.crs
@@ -82,17 +86,26 @@ def core(sidewalks, outfile):
     # Isolate intersections that need crossings (degree > 3), group with
     # their streets (all pointing out from the intersection)
     #
+    click.echo('Isolating street intersections...')
     ixns = intersections.group_intersections(G_streets_u)
 
     #
     # Draw crossings using the intersection + street + sidewalk info
     #
-    st_crossings = crossings.make_crossings(ixns, sidewalks_u)
+    click.echo('Drawing crossings...')
+    st_crossings = crossings.make_crossings(ixns, sidewalks_u, debug=debug)
+    if debug:
+        st_crossings, street_segments = st_crossings
 
     #
     # Write to file
     #
+    click.echo('Writing to file...')
     io.write_crossings(st_crossings, outfile)
+    if debug:
+        base, ext = path.splitext(outfile)
+        debug_outfile = '{}_debug{}'.format(base, ext)
+        io.write_debug(street_segments, debug_outfile)
 
 
 if __name__ == '__main__':

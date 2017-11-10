@@ -3,9 +3,10 @@ import numpy as np
 from shapely.geometry import LineString, Point, Polygon
 
 
-def make_crossings(intersections_dict, sidewalks):
+def make_crossings(intersections_dict, sidewalks, debug=False):
     crs = sidewalks.crs
     st_crossings = []
+    street_segments = []
     ixn_dat = []
     for i, (ixn, data) in enumerate(intersections_dict.items()):
         ixn_dat.append({
@@ -13,32 +14,43 @@ def make_crossings(intersections_dict, sidewalks):
             'ixn': i
         })
         for street in data['streets']:
-            new_crossing = make_crossing(street, sidewalks, data['streets'])
+            new_crossing = make_crossing(street, sidewalks, data['streets'],
+                                         debug)
+            if debug:
+                new_crossing, street_segment = new_crossing
+                street_segments.append(street_segment)
             if new_crossing is not None:
                 st_crossings.append(new_crossing)
 
-    st_crossings = gpd.GeoDataFrame({'geometry': st_crossings})
+    st_crossings = gpd.GeoDataFrame(st_crossings)
+    st_crossings = gpd.GeoDataFrame(st_crossings[['geometry']])
     st_crossings = st_crossings[st_crossings.type == 'LineString']
     st_crossings = st_crossings[st_crossings.is_valid]
 
     # Remove duplicates
-    def cmp(geom):
+    def comp(geom):
         p1 = np.round(geom.coords[0], 2)
         p2 = np.round(geom.coords[-1], 2)
         return str([p1, p2])
 
-    comparison = st_crossings.geometry.apply(cmp)
-    comparison.name = 'cmp'
+    comparison = st_crossings.geometry.apply(comp)
+    comparison.name = 'comp'
     unique = st_crossings.groupby(comparison).first()
     st_crossings = gpd.GeoDataFrame(unique.reset_index())
     st_crossings.crs = crs
 
     st_crossings = st_crossings.to_crs({'init': 'epsg:4326'})
 
-    return st_crossings
+    if debug:
+        street_segments = gpd.GeoDataFrame(street_segments)
+        street_segments.crs = sidewalks.crs
+        street_segments = street_segments.to_crs({'init': 'epsg:4326'})
+        return st_crossings, street_segments
+    else:
+        return st_crossings
 
 
-def make_crossing(street, sidewalks, streets_list):
+def make_crossing(street, sidewalks, streets_list, debug=False):
     '''Attempts to create a street crossing line given a street segment and
     a GeoDataFrame sidewalks dataset. The street and sidewalks should have
     these properties:
@@ -89,6 +101,9 @@ def make_crossing(street, sidewalks, streets_list):
     # right/left
     street_cut = cut(street, st_distance)[0]
 
+    if debug:
+        street_segment = {'geometry': street_cut, 'issue': 'None'}
+
     sidewalk_sides = {}
 
     for side in ('left', 'right'):
@@ -96,7 +111,11 @@ def make_crossing(street, sidewalks, streets_list):
                                             sidewalks)
         if side_sidewalks.shape[0] < 1:
             # One of the sides has no sidewalks to connect to! Abort!
-            return None
+            if debug:
+                street_segment['issue'] = 'no {} sidewalk'.format(side)
+                return None, street_segment
+            else:
+                return None
         sidewalk_sides[side] = side_sidewalks
 
     candidates = []
@@ -115,13 +134,14 @@ def make_crossing(street, sidewalks, streets_list):
 
         # The sides have passed the filter! Add their data to the list
         if crosses_self and not crosses_others:
-            candidates.append({
-                'crossing': crossing,
-                'distance': dist
-            })
+            candidates.append({'geometry': crossing, 'distance': dist})
 
     if not candidates:
-        return None
+        if debug:
+            street_segment['issue'] = 'no candidates'
+            return None, street_segment
+        else:
+            return None
 
     # Return the shortest crossing.
     # TODO: Should also bias towards *earlier* appearances, i.e. towards
@@ -132,9 +152,14 @@ def make_crossing(street, sidewalks, streets_list):
 
     # lengths * distance_metric
     def metric(candidate):
-        return candidate['crossing'].length + 1e-1 * candidate['distance']
+        return candidate['geometry'].length + 1e-1 * candidate['distance']
 
-    return sorted(candidates, key=metric)[0]['crossing']
+    best = sorted(candidates, key=metric)[0]
+
+    if debug:
+        return best, street_segment
+    else:
+        return best
 
 
 def get_side_sidewalks(offset, side, street, sidewalks):
@@ -145,11 +170,14 @@ def get_side_sidewalks(offset, side, street, sidewalks):
         for geom in offset.geoms:
             coords += list(geom.coords)
         offset = LineString(coords)
+    if side == 'left':
+        offset.coords = offset.coords[::-1]
     st_buffer = Polygon(list(street.coords) +
-                        list(offset.coords)[::-1] +
+                        list(offset.coords) +
                         [street.coords[0]])
     query = sidewalks.sindex.intersection(st_buffer.bounds, objects=True)
-    side_sidewalks = sidewalks.loc[[q.object for q in query]]
+    query_sidewalks = sidewalks.loc[[q.object for q in query]]
+    side_sidewalks = query_sidewalks[query_sidewalks.intersects(st_buffer)]
 
     return side_sidewalks
 
