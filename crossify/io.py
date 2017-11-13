@@ -71,6 +71,27 @@ def write_crossings(crossings, path):
     shutil.move(tempfile, path)
 
 
+def write_sidewalk_links(links, path):
+    # Just in case, attempt to reproject
+    links = links.to_crs({'init': 'epsg:4326'})
+
+    # Create a temporary directory and attempt to write the file
+    tempdir = mkdtemp()
+    tempfile = os.path.join(tempdir, 'links.geojson')
+
+    # TODO: Check if extension is .osm and if so, apply proper schema and
+    # osmify (user osmizer?)
+
+    try:
+        links.to_file(tempfile, driver='GeoJSON')
+    except Exception as e:
+        shutil.rmtree(tempdir)
+        raise e
+
+    # Writing was successful, so move the file to the correct path
+    shutil.move(tempfile, path)
+
+
 def write_debug(debug, path):
     # Just in case, attempt to reproject
     debug = debug.to_crs({'init': 'epsg:4326'})

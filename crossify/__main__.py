@@ -3,6 +3,7 @@ from os import path
 import osmnx as ox
 
 from . import crossings, intersections, io
+from .opensidewalks import make_links
 
 
 # TODO: See if there's a more proper way to find the project root dir
@@ -49,17 +50,18 @@ def from_file(sidewalks_in, outfile):
 @click.argument('north')
 @click.argument('outfile')
 @click.option('--debug', is_flag=True)
-def from_bbox(west, south, east, north, outfile, debug):
+@click.option('--opensidewalks', is_flag=True)
+def from_bbox(west, south, east, north, outfile, debug, opensidewalks):
     #
     # Read, fetch, and standardize data
     #
 
     # Note: all are converted to WGS84 by default
     sidewalks = io.fetch_sidewalks(west, south, east, north)
-    core(sidewalks, outfile, debug)
+    core(sidewalks, outfile, debug=debug, opensidewalks=opensidewalks)
 
 
-def core(sidewalks, outfile, debug=False):
+def core(sidewalks, outfile, debug=False, opensidewalks=False):
     #
     # Read, fetch, and standardize data
     #
@@ -113,11 +115,25 @@ def core(sidewalks, outfile, debug=False):
     click.echo('Done')
 
     #
+    # If the OpenSidewalks schema is desired, transform the data to OSM schema
+    #
+    if opensidewalks:
+        click.echo('Converting to OpenSidewalks schema...', nl=False)
+
+        st_crossings, sw_links = make_links(st_crossings, offset=1)
+
+        click.echo('Done')
+
+    #
     # Write to file
     #
     click.echo('Writing to file...', nl=False)
 
     io.write_crossings(st_crossings, outfile)
+    if opensidewalks:
+        base, ext = path.splitext(outfile)
+        sw_links_outfile = '{}_links{}'.format(base, ext)
+        io.write_sidewalk_links(sw_links, sw_links_outfile)
     if debug:
         base, ext = path.splitext(outfile)
         debug_outfile = '{}_debug{}'.format(base, ext)

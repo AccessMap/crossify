@@ -39,12 +39,9 @@ def make_crossings(intersections_dict, sidewalks, debug=False):
     st_crossings = gpd.GeoDataFrame(unique.reset_index())
     st_crossings.crs = crs
 
-    st_crossings = st_crossings.to_crs({'init': 'epsg:4326'})
-
     if debug:
         street_segments = gpd.GeoDataFrame(street_segments)
         street_segments.crs = sidewalks.crs
-        street_segments = street_segments.to_crs({'init': 'epsg:4326'})
         return st_crossings, street_segments
     else:
         return st_crossings
