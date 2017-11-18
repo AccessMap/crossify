@@ -131,7 +131,8 @@ def make_crossing(street, sidewalks, streets_list, debug=False):
 
         # The sides have passed the filter! Add their data to the list
         if crosses_self and not crosses_others:
-            candidates.append({'geometry': crossing, 'distance': dist})
+            angle = find_angle(crossing, street)
+            candidates.append({'geometry': crossing, 'distance': dist, 'angle': angle})
 
     if not candidates:
         if debug:
@@ -149,7 +150,7 @@ def make_crossing(street, sidewalks, streets_list, debug=False):
 
     # lengths * distance_metric
     def metric(candidate):
-        return candidate['geometry'].length + 1e-1 * candidate['distance']
+        return candidate['geometry'].length + 1e-1 * candidate['distance'] + .5*candidate['angle']
 
     best = sorted(candidates, key=metric)[0]
 
@@ -229,3 +230,25 @@ def cut(line, distance):
             return [
                 LineString(coords[:i] + [(cp.x, cp.y)]),
                 LineString([(cp.x, cp.y)] + coords[i:])]
+
+
+def azimuth(point1, point2):
+    '''azimuth between 2 shapely points (interval 0 - 360)'''
+    angle = np.arctan2(point2.x - point1.x, point2.y - point1.y)
+    return np.degrees(angle)if angle>0 else np.degrees(angle) + 360
+
+def find_angle(candidate, street):
+
+    intersect = list(street.intersection(candidate).coords)[0]
+    shortest_dist = 99999999
+    for coord in list(street.coords):
+        dist = abs(coord[0] - intersect[0]) + abs(coord[1] - intersect[1])
+        if dist < shortest_dist:
+            closest = coord
+            shortest_dist = dist
+
+    candid_point = candidate.bounds[0], candidate.bounds[1]
+    
+    angle = azimuth(Point(closest), Point(candid_point))
+
+    return min(abs(90 - angle%90), angle%90)
