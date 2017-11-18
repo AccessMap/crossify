@@ -49,19 +49,21 @@ def from_file(sidewalks_in, outfile):
 @click.argument('east')
 @click.argument('north')
 @click.argument('outfile')
+@click.argument('dist_param')
+@click.argument('angle_param')
 @click.option('--debug', is_flag=True)
 @click.option('--opensidewalks', is_flag=True)
-def from_bbox(west, south, east, north, outfile, debug, opensidewalks):
+def from_bbox(west, south, east, north, outfile, dist_param, angle_param, debug, opensidewalks):
     #
     # Read, fetch, and standardize data
     #
 
     # Note: all are converted to WGS84 by default
     sidewalks = io.fetch_sidewalks(west, south, east, north)
-    core(sidewalks, outfile, debug=debug, opensidewalks=opensidewalks)
+    core(sidewalks, outfile, dist_param=dist_param, angle_param=angle_param, debug=debug, opensidewalks=opensidewalks)
 
 
-def core(sidewalks, outfile, debug=False, opensidewalks=False):
+def core(sidewalks, outfile, dist_param, angle_param, debug=False, opensidewalks=False):
     #
     # Read, fetch, and standardize data
     #
@@ -108,7 +110,7 @@ def core(sidewalks, outfile, debug=False, opensidewalks=False):
     #
     click.echo('Drawing crossings...', nl=False)
 
-    st_crossings = crossings.make_crossings(ixns, sidewalks_u, debug=debug)
+    st_crossings = crossings.make_crossings(ixns, sidewalks_u, dist_param, angle_param, debug=debug)
     if debug:
         st_crossings, street_segments = st_crossings
 

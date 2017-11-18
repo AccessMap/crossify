@@ -3,7 +3,7 @@ import numpy as np
 from shapely.geometry import LineString, Point, Polygon
 
 
-def make_crossings(intersections_dict, sidewalks, debug=False):
+def make_crossings(intersections_dict, sidewalks, dist_param, angle_param, debug=False):
     crs = sidewalks.crs
     st_crossings = []
     street_segments = []
@@ -14,7 +14,7 @@ def make_crossings(intersections_dict, sidewalks, debug=False):
             'ixn': i
         })
         for street in data['streets']:
-            new_crossing = make_crossing(street, sidewalks, data['streets'],
+            new_crossing = make_crossing(street, sidewalks, data['streets'], dist_param, angle_param,
                                          debug)
             if debug:
                 new_crossing, street_segment = new_crossing
@@ -47,7 +47,7 @@ def make_crossings(intersections_dict, sidewalks, debug=False):
         return st_crossings
 
 
-def make_crossing(street, sidewalks, streets_list, debug=False):
+def make_crossing(street, sidewalks, streets_list, dist_param, angle_param, debug=False):
     '''Attempts to create a street crossing line given a street segment and
     a GeoDataFrame sidewalks dataset. The street and sidewalks should have
     these properties:
@@ -149,8 +149,8 @@ def make_crossing(street, sidewalks, streets_list, debug=False):
     # distance_metric = 1 / np.array([line['distance'] for line in lines])
 
     # lengths * distance_metric
-    def metric(candidate):
-        return candidate['geometry'].length + 1e-1 * candidate['distance'] + .5*candidate['angle']
+    def metric(candidate, dist_param = dist_param, angle_param = angle_param):
+        return candidate['geometry'].length  + float(dist_param)*candidate['distance'] + float(angle_param)*candidate['angle']
 
     best = sorted(candidates, key=metric)[0]
 
