@@ -23,7 +23,6 @@ def make_crossings(intersections_dict, sidewalks, debug=False):
                 st_crossings.append(new_crossing)
 
     st_crossings = gpd.GeoDataFrame(st_crossings)
-    st_crossings = gpd.GeoDataFrame(st_crossings[['geometry']])
     st_crossings = st_crossings[st_crossings.type == 'LineString']
     st_crossings = st_crossings[st_crossings.is_valid]
 
@@ -101,7 +100,7 @@ def make_crossing(street, sidewalks, streets_list, debug=False):
     if debug:
         street_segment = {'geometry': street_cut, 'issue': 'None'}
 
-    sidewalk_sides = {}
+    sides = {}
 
     for side in ('left', 'right'):
         side_sidewalks = get_side_sidewalks(OFFSET, side, street_cut,
@@ -113,13 +112,13 @@ def make_crossing(street, sidewalks, streets_list, debug=False):
                 return None, street_segment
             else:
                 return None
-        sidewalk_sides[side] = side_sidewalks
+        sides[side] = side_sidewalks
 
     candidates = []
     for dist in np.arange(start_dist, st_distance, INCREMENT):
-        crossing = crossing_from_dist(street, dist,
-                                      sidewalk_sides['left'],
-                                      sidewalk_sides['right'])
+        crossing, sw_left, sw_right = crossing_from_dist(street, dist,
+                                                         sides['left'],
+                                                         sides['right'])
 
         # We now have the lines on the left and right sides. Let's now filter
         # and *not* append if either are invalid
@@ -131,7 +130,12 @@ def make_crossing(street, sidewalks, streets_list, debug=False):
 
         # The sides have passed the filter! Add their data to the list
         if crosses_self and not crosses_others:
-            candidates.append({'geometry': crossing, 'distance': dist})
+            candidates.append({
+                'geometry': crossing,
+                'distance': dist,
+                'sw_left': sw_left,
+                'sw_right': sw_right
+            })
 
     if not candidates:
         if debug:
@@ -184,19 +188,21 @@ def crossing_from_dist(street, dist, sidewalks_left, sidewalks_right):
     point = street.interpolate(dist)
 
     # Find the closest left and right points
-    def closest_line_to_point(point, lines):
-        sorted_side = lines.distance(point).sort_values()
-        closest = lines.loc[sorted_side.index[0], 'geometry']
-        return closest.interpolate(closest.project(point))
+    def closest_line_loc(point, lines_gdf):
+        return lines_gdf.distance(point).sort_values().index[0]
 
-    left = closest_line_to_point(point, sidewalks_left)
-    right = closest_line_to_point(point, sidewalks_right)
+    sw_left = closest_line_loc(point, sidewalks_left)
+    sw_right = closest_line_loc(point, sidewalks_right)
+    geom_left = sidewalks_left.loc[sw_left].geometry
+    geom_right = sidewalks_right.loc[sw_right].geometry
+    left = geom_left.interpolate(geom_left.project(point))
+    right = geom_right.interpolate(geom_right.project(point))
 
     # We now have the lines on the left and right sides. Let's now filter
     # and *not* append if either are invalid
     # (1) They cannot cross any other street line
     # (2) They cannot be too far away (MAX_DIST)
-    crossing = LineString([left, right])
+    crossing = LineString([left, right]), sw_left, sw_right
 
     return crossing
 

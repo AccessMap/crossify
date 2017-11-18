@@ -1,4 +1,5 @@
 import click
+import geopandas as gpd
 from os import path
 import osmnx as ox
 
@@ -109,6 +110,8 @@ def core(sidewalks, outfile, debug=False, opensidewalks=False):
     click.echo('Drawing crossings...', nl=False)
 
     st_crossings = crossings.make_crossings(ixns, sidewalks_u, debug=debug)
+    st_crossings = gpd.GeoDataFrame(st_crossings[['geometry']])
+    st_crossings.crs = sidewalks_u.crs
     if debug:
         st_crossings, street_segments = st_crossings
 
