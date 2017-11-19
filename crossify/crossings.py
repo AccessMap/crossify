@@ -3,7 +3,7 @@ import numpy as np
 from shapely.geometry import LineString, Point, Polygon
 
 
-def make_crossings(intersections_dict, sidewalks, debug=False):
+def make_crossings(intersections_dict, sidewalks, dist_param, angle_param, debug=False):
     crs = sidewalks.crs
     st_crossings = []
     street_segments = []
@@ -14,7 +14,7 @@ def make_crossings(intersections_dict, sidewalks, debug=False):
             'ixn': i
         })
         for street in data['streets']:
-            new_crossing = make_crossing(street, sidewalks, data['streets'],
+            new_crossing = make_crossing(street, sidewalks, data['streets'], dist_param, angle_param,
                                          debug)
             if debug:
                 new_crossing, street_segment = new_crossing
@@ -47,7 +47,7 @@ def make_crossings(intersections_dict, sidewalks, debug=False):
         return st_crossings
 
 
-def make_crossing(street, sidewalks, streets_list, debug=False):
+def make_crossing(street, sidewalks, streets_list, dist_param, angle_param, debug=False):
     '''Attempts to create a street crossing line given a street segment and
     a GeoDataFrame sidewalks dataset. The street and sidewalks should have
     these properties:
@@ -85,7 +85,7 @@ def make_crossing(street, sidewalks, streets_list, debug=False):
     # FIXME: use 'z layer' data if available (e.g. OSM)
 
     START_DIST = 4
-    INCREMENT = 2
+    INCREMENT = 1
     MAX_DIST_ALONG = 25
     MAX_CROSSING_DIST = 30
     OFFSET = MAX_CROSSING_DIST / 2
@@ -131,7 +131,8 @@ def make_crossing(street, sidewalks, streets_list, debug=False):
 
         # The sides have passed the filter! Add their data to the list
         if crosses_self and not crosses_others:
-            candidates.append({'geometry': crossing, 'distance': dist})
+            angle = find_angle(crossing, street)
+            candidates.append({'geometry': crossing, 'distance': dist, 'angle': angle})
 
     if not candidates:
         if debug:
@@ -148,8 +149,8 @@ def make_crossing(street, sidewalks, streets_list, debug=False):
     # distance_metric = 1 / np.array([line['distance'] for line in lines])
 
     # lengths * distance_metric
-    def metric(candidate):
-        return candidate['geometry'].length + 1e-1 * candidate['distance']
+    def metric(candidate, dist_param = dist_param, angle_param = angle_param):
+        return candidate['geometry'].length  + float(dist_param)*candidate['distance'] + float(angle_param)*candidate['angle']
 
     best = sorted(candidates, key=metric)[0]
 
@@ -229,3 +230,29 @@ def cut(line, distance):
             return [
                 LineString(coords[:i] + [(cp.x, cp.y)]),
                 LineString([(cp.x, cp.y)] + coords[i:])]
+
+
+def azimuth(point1, point2):
+    '''azimuth between 2 shapely points (interval 0 - 360)'''
+    angle = np.arctan2(point2.x - point1.x, point2.y - point1.y)
+    return np.degrees(angle)if angle>0 else np.degrees(angle) + 360
+
+def find_angle(candidate, street):
+
+    try:
+        intersect = list(street.intersection(candidate).coords)[0]
+        shortest_dist = 99999999
+        for coord in list(street.coords):
+            dist = abs(coord[0] - intersect[0]) + abs(coord[1] - intersect[1])
+            if dist < shortest_dist:
+                closest = coord
+                shortest_dist = dist
+
+        candid_point = candidate.bounds[0], candidate.bounds[1]
+
+        angle = azimuth(Point(closest), Point(candid_point))
+
+        return min(abs(90 - angle%90), angle%90)
+
+    except NotImplementedError:
+        return 15
