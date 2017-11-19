@@ -85,7 +85,7 @@ def make_crossing(street, sidewalks, streets_list, dist_param, angle_param, debu
     # FIXME: use 'z layer' data if available (e.g. OSM)
 
     START_DIST = 4
-    INCREMENT = 2
+    INCREMENT = 1
     MAX_DIST_ALONG = 25
     MAX_CROSSING_DIST = 30
     OFFSET = MAX_CROSSING_DIST / 2
@@ -239,16 +239,20 @@ def azimuth(point1, point2):
 
 def find_angle(candidate, street):
 
-    intersect = list(street.intersection(candidate).coords)[0]
-    shortest_dist = 99999999
-    for coord in list(street.coords):
-        dist = abs(coord[0] - intersect[0]) + abs(coord[1] - intersect[1])
-        if dist < shortest_dist:
-            closest = coord
-            shortest_dist = dist
+    try:
+        intersect = list(street.intersection(candidate).coords)[0]
+        shortest_dist = 99999999
+        for coord in list(street.coords):
+            dist = abs(coord[0] - intersect[0]) + abs(coord[1] - intersect[1])
+            if dist < shortest_dist:
+                closest = coord
+                shortest_dist = dist
 
-    candid_point = candidate.bounds[0], candidate.bounds[1]
-    
-    angle = azimuth(Point(closest), Point(candid_point))
+        candid_point = candidate.bounds[0], candidate.bounds[1]
 
-    return min(abs(90 - angle%90), angle%90)
+        angle = azimuth(Point(closest), Point(candid_point))
+
+        return min(abs(90 - angle%90), angle%90)
+
+    except NotImplementedError:
+        return 15
