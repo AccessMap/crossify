@@ -2,9 +2,13 @@ import geopandas as gpd
 import numpy as np
 from shapely.geometry import LineString, Point, Polygon
 
+from . import validators
+
 
 def make_crossings(intersections_dict, sidewalks):
     crs = sidewalks.crs
+
+    validators.standardize_layer(sidewalks)
 
     ixn_dat = []
     st_crossings = []
@@ -16,6 +20,8 @@ def make_crossings(intersections_dict, sidewalks):
             'ixn': i
         })
         for street in data['streets']:
+            # Protect against invalid inputs
+            street['layer'] = validators.transform_layer(street['layer'])
             new_crossing = make_crossing(street, sidewalks, data['streets'])
             if new_crossing is not None:
                 st_crossings.append(new_crossing)

@@ -1,4 +1,5 @@
 '''Functions for validating and sprucing-up inputs.'''
+import numpy as np
 
 
 def validate_sidewalks(sidewalks):
@@ -25,3 +26,26 @@ def validate_streets(streets):
     else:
         raise Exception('No LineStrings in streets dataset: are they' +
                         ' MultiLineStrings?')
+
+
+def transform_layer(layer):
+    # Convert nans to 0
+    if layer is np.nan:
+        return 0
+
+    try:
+        return int(layer)
+    except ValueError:
+        # Value can't be represented as integer - invalid schema, just
+        # assume default layer
+        return 0
+    except TypeError:
+        # Sometimes it's a list and that's annoying
+        return int(layer[0])
+
+
+def standardize_layer(gdf):
+    if 'layer' in gdf.columns:
+        gdf['layer'] = gdf['layer'].apply(transform_layer)
+    else:
+        gdf['layer'] = 0

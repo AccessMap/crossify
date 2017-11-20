@@ -4,7 +4,7 @@ from os import path
 import osmnx as ox
 import numpy as np
 
-from . import crossings, intersections, io
+from . import crossings, intersections, io, validators
 from .opensidewalks import make_links
 
 
@@ -70,23 +70,6 @@ def osm_bbox(west, south, east, north, outfile, opensidewalks):
     core(sidewalks, outfile, opensidewalks=opensidewalks)
 
 
-# FIXME: move input validation/transformations to separate module
-def transform_layer(layer):
-    # Convert nans to 0
-    if layer is np.nan:
-        return 0
-
-    try:
-        return int(layer)
-    except ValueError:
-        # Value can't be represented as integer - invalid schema, just
-        # assume default layer
-        return 0
-    except TypeError:
-        # Sometimes it's a list and that's annoying
-        return int(layer[0])
-
-
 def core(sidewalks, outfile, opensidewalks=False):
     #
     # Read, fetch, and standardize data
@@ -108,7 +91,7 @@ def core(sidewalks, outfile, opensidewalks=False):
     G_streets_u = ox.projection.project_graph(G_streets)
     # Fix the layer value
     for u, v, k, l in G_streets_u.edges(keys=True, data='layer', default=0):
-        layer = transform_layer(l)
+        layer = validators.transform_layer(l)
         G_streets_u.edges[u, v, k]['layer'] = layer
 
     click.echo('Done')
@@ -142,10 +125,7 @@ def core(sidewalks, outfile, opensidewalks=False):
     # Implied default value of 'layer' is 0, but it might be explicitly
     # described in some cases. Don't want to accidentally compare 'nan' to 0
     # and get 'False' when those are implicitly true in OSM
-    if 'layer' in sidewalks_u.columns:
-        sidewalks_u['layer'] = sidewalks_u['layer'].apply(transform_layer)
-    else:
-        sidewalks_u['layer'] = 0
+    validators.standardize_layer(sidewalks_u)
 
     st_crossings = crossings.make_crossings(ixns, sidewalks_u)
     if st_crossings is None:
