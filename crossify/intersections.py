@@ -30,15 +30,18 @@ def group_intersections(G):
             edges.append(get_edge(G, intersection_id, node))
 
         # Make sure all streets radiate out from the intersection
+        edges_ordered = []
         for i, edge in enumerate(edges):
+            copy = edge.copy()
             point = Point(*edge['geometry'].coords[-1])
             if point.distance(intersection) < 1e-1:
                 reversed_street = LineString(edge['geometry'].coords[::-1])
-                edges[i]['geometry'] = reversed_street
+                copy['geometry'] = reversed_street
+            edges_ordered.append(copy)
 
         intersection_groups[intersection_id] = {
             'geometry': intersection,
-            'streets': edges
+            'streets': edges_ordered
         }
 
     return intersection_groups
