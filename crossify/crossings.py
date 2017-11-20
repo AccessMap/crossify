@@ -122,6 +122,9 @@ def make_crossing(street, sidewalks, streets_list):
         if not crossing['geometry'].intersects(street['geometry']):
             continue
 
+        if crossing['geometry'].length > MAX_CROSSING_DIST:
+            continue
+
         other_streets = []
         for st in streets_list:
             if st == street:
