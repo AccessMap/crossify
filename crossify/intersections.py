@@ -1,3 +1,4 @@
+import numpy as np
 from shapely.geometry import LineString, Point
 
 
@@ -21,30 +22,40 @@ def group_intersections(G):
         outgoing = set(G.successors(intersection_id))
         incoming = incoming.difference(outgoing)
 
-        geometries = []
+        edges = []
         for node in incoming:
-            geometries.append(get_edge_geometry(G, node, intersection_id))
+            edges.append(get_edge(G, node, intersection_id))
 
         for node in outgoing:
-            geometries.append(get_edge_geometry(G, intersection_id, node))
+            edges.append(get_edge(G, intersection_id, node))
 
-        for i, geometry in enumerate(geometries):
-            if Point(*geometry.coords[-1]).distance(intersection) < 1e-1:
-                geometries[i] = LineString(geometry.coords[::-1])
+        # Make sure all streets radiate out from the intersection
+        for i, edge in enumerate(edges):
+            point = Point(*edge['geometry'].coords[-1])
+            if point.distance(intersection) < 1e-1:
+                reversed_street = LineString(edge['geometry'].coords[::-1])
+                edges[i]['geometry'] = reversed_street
 
         intersection_groups[intersection_id] = {
             'geometry': intersection,
-            'streets': geometries
+            'streets': edges
         }
 
     return intersection_groups
 
 
-def get_edge_geometry(G, from_node, to_node):
+def get_edge(G, from_node, to_node):
     edge = G[from_node][to_node][0]
-    if 'geometry' in edge:
-        return edge['geometry']
-    else:
+
+    if 'geometry' not in edge:
         start = Point((G.nodes[from_node]['x'], G.nodes[from_node]['y']))
         end = Point((G.nodes[to_node]['x'], G.nodes[to_node]['y']))
-        return LineString([start, end])
+        edge['geometry'] = LineString([start, end])
+
+    if 'layer' in edge:
+        if edge['layer'] is np.nan:
+            edge['layer'] = 0
+    else:
+        edge['layer'] = 0
+
+    return edge

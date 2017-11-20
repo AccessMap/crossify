@@ -90,24 +90,3 @@ def write_sidewalk_links(links, path):
 
     # Writing was successful, so move the file to the correct path
     shutil.move(tempfile, path)
-
-
-def write_debug(debug, path):
-    # Just in case, attempt to reproject
-    debug = debug.to_crs({'init': 'epsg:4326'})
-
-    # Create a temporary directory and attempt to write the file
-    tempdir = mkdtemp()
-    tempfile = os.path.join(tempdir, 'debug.geojson')
-
-    # TODO: Check if extension is .osm and if so, apply proper schema and
-    # osmify (user osmizer?)
-
-    try:
-        debug.to_file(tempfile, driver='GeoJSON')
-    except Exception as e:
-        shutil.rmtree(tempdir)
-        raise e
-
-    # Writing was successful, so move the file to the correct path
-    shutil.move(tempfile, path)

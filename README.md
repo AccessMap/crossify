@@ -38,9 +38,9 @@ and a Python library.
 
 ### Sidewalks should be fetched from OpenStreetMap
 
-To fetch sidewalk data from OpenStreetMap, use the `from_bbox` command:
+To fetch sidewalk data from OpenStreetMap, use the `osm_bbox` command:
 
-    crossify from_bbox -- <west> <south> <east> <north> <output file>
+    crossify osm_bbox -- <west> <south> <east> <north> <output file>
 
 The values of west, south, east, and north define a rectangular bounding box
 for your query, and should be in terms of latitude (south, north) and longitude
@@ -49,7 +49,7 @@ coordinates not getting parsed as command line options (see the example below).
 
 Example:
 
-    crossify from_bbox -- -122.31846 47.65458 -122.31004 47.65783
+    crossify osm_bbox -- -122.31846 47.65458 -122.31004 47.65783
     test/output/crossings.geojson
 
 ### A sidewalks file is provided
