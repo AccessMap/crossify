@@ -82,6 +82,9 @@ def transform_layer(layer):
         # Value can't be represented as integer - invalid schema, just
         # assume default layer
         return 0
+    except TypeError:
+        # Sometimes it's a list and that's annoying
+        return int(layer[0])
 
 
 def core(sidewalks, outfile, opensidewalks=False):
