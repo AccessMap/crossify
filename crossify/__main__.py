@@ -145,6 +145,10 @@ def core(sidewalks, outfile, opensidewalks=False):
         sidewalks_u['layer'] = 0
 
     st_crossings = crossings.make_crossings(ixns, sidewalks_u)
+    if st_crossings is None:
+        click.echo('Failed to make any crossings!')
+        return
+
     if 'layer' in sidewalks_u.columns:
         keep_cols = ['geometry', 'layer']
     else:

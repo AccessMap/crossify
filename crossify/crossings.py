@@ -20,6 +20,9 @@ def make_crossings(intersections_dict, sidewalks):
             if new_crossing is not None:
                 st_crossings.append(new_crossing)
 
+    if not st_crossings:
+        return None
+
     st_crossings = gpd.GeoDataFrame(st_crossings)
     st_crossings = st_crossings[st_crossings.type == 'LineString']
     st_crossings = st_crossings[st_crossings.is_valid]
