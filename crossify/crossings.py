@@ -111,18 +111,39 @@ def make_crossing(street, sidewalks, streets_list):
         # One of the sides has no sidewalks to connect to! Abort!
         return None
 
-    candidates = []
+    crossings = []
     for dist in np.arange(start_dist, st_distance, INCREMENT):
-        crossing = crossing_from_dist(street['geometry'], dist, sw_left,
-                                      sw_right)
+        # Grab a point along the outgoing street
+        st_geom = street['geometry']
+        point = st_geom.interpolate(dist)
 
+        crossing1, left1, right1 = crossing_from_point(point, sw_left,
+                                                       sw_right)
+        crossing2, left2, right2 = crossing_from_point(point, sw_right,
+                                                       sw_left)
+
+        crossings.append({
+            'geometry': crossing1,
+            'sw_left': left1,
+            'sw_right': right1
+        })
+        crossings.append({
+            'geometry': crossing2,
+            'sw_left': left2,
+            'sw_right': right2
+        })
+
+    candidates = []
+    for crossing in crossings:
+        geometry_cr = crossing['geometry']
+        geometry_st = street['geometry']
         #
         # Filters
         #
-        if not crossing['geometry'].intersects(street['geometry']):
+        if not geometry_cr.intersects(geometry_st):
             continue
 
-        if crossing['geometry'].length > MAX_CROSSING_DIST:
+        if geometry_cr.length > MAX_CROSSING_DIST:
             continue
 
         other_streets = []
@@ -134,17 +155,19 @@ def make_crossing(street, sidewalks, streets_list):
             other_streets.append(st['geometry'])
 
         if other_streets:
-            if crosses_other_streets(crossing['geometry'], other_streets):
+            if crosses_other_streets(geometry_cr, other_streets):
                 continue
 
         # The sides have passed the filter! Add their data to the list
-        ixn = street['geometry'].intersection(crossing['geometry'])
+        ixn = geometry_st.intersection(geometry_cr)
         if ixn.type != 'Point':
             continue
 
-        crossing_distance = street['geometry'].project(ixn)
+        crossing_distance = geometry_st.project(ixn)
         crossing['search_distance'] = dist
         crossing['crossing_distance'] = crossing_distance
+        st_seg = segment_at_distance(geometry_st, dist)
+        crossing['dotproduct'] = dotproduct(geometry_cr, st_seg)
         crossing['layer'] = layer
 
         candidates.append(crossing)
@@ -164,6 +187,7 @@ def make_crossing(street, sidewalks, streets_list):
         terms = []
         terms.append(candidate['geometry'].length)
         terms.append(2e-1 * candidate['crossing_distance'])
+        terms.append(5e2 * abs(candidate['dotproduct']))
         return sum(terms)
 
     best = sorted(candidates, key=cost)[0]
@@ -192,33 +216,22 @@ def get_side_sidewalks(offset, side, street, sidewalks):
     return side_sidewalks
 
 
-def crossing_from_dist(street, dist, sidewalks_left, sidewalks_right):
-    # Grab a point along the outgoing street
-    point = street.interpolate(dist)
+def crossing_from_point(point, sidewalks1, sidewalks2):
+    # Find the closest point on each sidewalk (left and right) to the point.
+    # For each of these points, find the closest point to it on the other
+    # sidewalk, then draw a line.
 
-    # Find the closest left and right points
-    def closest_line_loc(point, lines_gdf):
-        return lines_gdf.distance(point).sort_values().index[0]
+    idx1 = sidewalks1.distance(point).sort_values().index[0]
+    geometry1 = sidewalks1.loc[idx1, 'geometry']
+    point1 = geometry1.interpolate(geometry1.project(point))
 
-    sw_left = closest_line_loc(point, sidewalks_left)
-    sw_right = closest_line_loc(point, sidewalks_right)
-    geom_left = sidewalks_left.loc[sw_left].geometry
-    geom_right = sidewalks_right.loc[sw_right].geometry
-    left = geom_left.interpolate(geom_left.project(point))
-    right = geom_right.interpolate(geom_right.project(point))
+    idx2 = sidewalks2.distance(point1).sort_values().index[0]
+    geometry2 = sidewalks2.loc[idx2, 'geometry']
+    point2 = geometry2.interpolate(geometry2.project(point))
 
-    # We now have the lines on the left and right sides. Let's now filter
-    # and *not* append if either are invalid
-    # (1) They cannot cross any other street line
-    # (2) They cannot be too far away (MAX_DIST)
-    geometry = LineString([left, right])
-    crossing = {
-        'geometry': geometry,
-        'sw_left': sw_left,
-        'sw_right': sw_right
-    }
+    crossing = LineString([point1, point2])
 
-    return crossing
+    return crossing, idx1, idx2
 
 
 def crosses_other_streets(crossing, other_streets):
@@ -244,3 +257,35 @@ def cut(line, distance):
             return [
                 LineString(coords[:i] + [(cp.x, cp.y)]),
                 LineString([(cp.x, cp.y)] + coords[i:])]
+
+
+def segment_at_distance(line, distance):
+    # Isolate the linestring segment at a specific distance
+    if distance <= 0.0 or distance >= line.length:
+        raise ValueError('Distance < 0 or longer than LineString')
+    coords = list(line.coords)
+    for i, p in enumerate(coords):
+        pd = line.project(Point(p))
+        if pd == distance or pd > distance:
+            # i can't be 0, otherwise distance would be <= 0
+            # Segment located!
+            return LineString(coords[i - 1:i + 1])
+
+
+def dotproduct(segment1, segment2):
+    # It's assumed that the segments are Shapely LineStrings with only two
+    # points: start and end
+    # Create unit vectors so the values are always comparable
+    def unit_vector(segment):
+        coords = np.array(segment.coords)
+        vector = coords[1] - coords[0]
+        unit_vector = vector / segment.length
+
+        return unit_vector
+
+    vector1 = unit_vector(segment1)
+    vector2 = unit_vector(segment2)
+
+    # The dot product measures orthogonality: 0 = perfectly orthogonal, 1
+    # = parallel.
+    return vector1.dot(vector2)
