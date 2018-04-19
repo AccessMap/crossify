@@ -48,7 +48,7 @@ def make_crossings(intersections_dict, sidewalks):
     return st_crossings
 
 
-def make_crossing(street, sidewalks, streets_list):
+def make_crossing(street, sidewalks, streets_list, max_length=30, step_size=2):
     '''Attempts to create a street crossing line given a street segment and
     a GeoDataFrame sidewalks dataset. The street and sidewalks should have
     these properties:
@@ -64,30 +64,30 @@ def make_crossing(street, sidewalks, streets_list):
     :type street: shapely.geometry.LineString
     :param sidewalks: The sidewalks dataset.
     :type sidewalks: geopandas.GeoDataFrame
+    :param max_length: Maximum length of resulting crossings - can also be
+                       interpreted as maximum street width to cross. In meters.
+    :type max_length: float
+    :param step_size: Step size to use while searching for crossing location. A
+                      smaller step size will find a more optimal location, but
+                      take longer to compute. In meters.
+    :type step_size: float
     :returns: If a crossing can be made, a shapely Linestring. Otherwise, None.
     :rtype: shapely.geometry.LineString or None
 
     '''
-    # 'Walk' along the street in 1-meter increments, finding the closest
-    # sidewalk + the distance along each end. Reject those with inappropriate
-    # angles and differences in length.
-    # TODO: this is a good place for optimizations, it's a search problem.
-    # Can probably do something like binary search.
 
+    '''
+    'Walk' along the street in step_size-meter increments, finding the closest
+    sidewalk + the distance along each end. Reject those with inappropriate
+    angles and differences in length.
+    '''
     # Clip street in half: don't want to cross too far in.
     # TODO: this should be done in a more sophisticated way. e.g. dead ends
-    # shouldn't require this and we should use a max distance value as well
-    # street = street.interpolate(0.5, normalized=True)
-
-    # New idea: use street buffers of MAX_CROSSING_DIST + small delta, use
-    # this to limit the sidewalks to be considered at each point. Fewer
-    # distance and side-of-line queries!
+    # shouldn't require this
 
     START_DIST = 4
-    INCREMENT = 2
     MAX_DIST_ALONG = 25
-    MAX_CROSSING_DIST = 30
-    OFFSET = MAX_CROSSING_DIST / 2
+    OFFSET = max_length / 2
 
     st_distance = min(street['geometry'].length / 2, MAX_DIST_ALONG)
     start_dist = min(START_DIST, st_distance / 2)
@@ -112,7 +112,7 @@ def make_crossing(street, sidewalks, streets_list):
         return None
 
     crossings = []
-    for dist in np.arange(start_dist, st_distance, INCREMENT):
+    for dist in np.arange(start_dist, st_distance, step_size):
         # Grab a point along the outgoing street
         st_geom = street['geometry']
         point = st_geom.interpolate(dist)
@@ -143,7 +143,7 @@ def make_crossing(street, sidewalks, streets_list):
         if not geometry_cr.intersects(geometry_st):
             continue
 
-        if geometry_cr.length > MAX_CROSSING_DIST:
+        if geometry_cr.length > max_length:
             continue
 
         other_streets = []
