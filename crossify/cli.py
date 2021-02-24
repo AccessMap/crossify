@@ -5,6 +5,7 @@ import osmnx as ox
 import numpy as np
 
 from . import crossings, intersections, io, validators
+from .split_sidewalks import split_sidewalks
 from .opensidewalks import make_links
 
 
@@ -185,3 +186,16 @@ def core(sidewalks, outfile, opensidewalks=False):
     io.write_crossings(st_crossings, outfile)
 
     click.echo("Done")
+
+
+@crossify.command()
+@click.argument("sidewalks_in")
+@click.argument("crossings_in")
+@click.argument("outfile")
+@click.option("--driver", default="GPKG")
+def split(sidewalks_in, crossings_in, outfile, driver):
+    # TODO: Convert all inputs to UTM projection
+    sidewalks = gpd.read_file(sidewalks_in)
+    crossings = gpd.read_file(crossings_in)
+    new_sidewalks = split_sidewalks(sidewalks, crossings)
+    new_sidewalks.to_file(outfile, driver=driver)
