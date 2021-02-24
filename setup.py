@@ -9,9 +9,9 @@ package_data = \
 
 install_requires = \
 ['click>=7.0.0,<8.0.0',
- 'geopandas>=0.3.0,<0.4.0',
+ 'geopandas>=0.8,<0.9',
  'numpy>=1.12.1,<2.0.0',
- 'osmnx==0.6',
+ 'osmnx>=0.14,<0.15',
  'overpass>=0.5.6,<0.6.0',
  'shapely>=1.6,<2.0']
 

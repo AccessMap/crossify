@@ -45,7 +45,7 @@ def fetch_street_graph(sidewalks):
     # Just in case, attempt to reproject
     sidewalks = sidewalks.to_crs({"init": "epsg:4326"})
     west, south, east, north = sidewalks.total_bounds
-    G_streets = ox.graph_from_bbox(north, south, east, west, network_type="drive")
+    G_streets = ox.graph.graph_from_bbox(north, south, east, west, network_type="drive")
 
     return G_streets
 

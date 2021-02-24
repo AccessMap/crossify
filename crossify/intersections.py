@@ -13,7 +13,7 @@ def group_intersections(G):
     intersection_groups = {}
 
     for intersection_id in intersections:
-        data = G.node[intersection_id]
+        data = G.nodes[intersection_id]
         intersection = Point(data["x"], data["y"])
 
         # Two-way streets will produce two edges: one in, one out. We will keep

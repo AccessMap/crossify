@@ -11,9 +11,9 @@ crossify = "crossify.cli:crossify"
 [tool.poetry.dependencies]
 python = "^3.6.1"
 click = "^7.0.0"
-geopandas = "^0.3.0"
+geopandas = "^0.8"
 numpy = "^1.12.1"
-osmnx = "0.6"
+osmnx = "^0.14"
 overpass = "^0.5.6"
 shapely = "^1.6"
 

@@ -198,9 +198,10 @@ def get_side_sidewalks(offset, side, street, sidewalks):
         + list(offset.coords)
         + [street["geometry"].coords[0]]
     )
-    query = sidewalks.sindex.intersection(st_buffer.bounds, objects=True)
-    query_sidewalks = sidewalks.loc[[q.object for q in query]]
-    side_sidewalks = query_sidewalks[query_sidewalks.intersects(st_buffer)]
+    st_buffer_gdf = gpd.GeoDataFrame(geometry=[st_buffer])
+    # FIXME: standardize handling of CRS data
+    st_buffer_gdf.crs = sidewalks.crs
+    side_sidewalks = gpd.sjoin(sidewalks, st_buffer_gdf, how="inner", op="intersects")
 
     return side_sidewalks
 

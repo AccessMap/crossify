@@ -215,14 +215,13 @@ category = "main"
 description = "Geographic pandas extensions"
 name = "geopandas"
 optional = false
-python-versions = "*"
-version = "0.3.0"
+python-versions = ">=3.5"
+version = "0.8.2"
 
 [package.dependencies]
-descartes = "*"
 fiona = "*"
-pandas = "*"
-pyproj = "*"
+pandas = ">=0.23.0"
+pyproj = ">=2.2.0"
 shapely = "*"
 
 [[package]]
@@ -379,25 +378,28 @@ version = "1.19.5"
 
 [[package]]
 category = "main"
-description = "Retrieve, construct, analyze, and visualize street networks from OpenStreetMap"
+description = "Retrieve, model, analyze, and visualize OpenStreetMap street networks and other spatial data"
 name = "osmnx"
 optional = false
-python-versions = "*"
-version = "0.6"
+python-versions = ">=3.6"
+version = "0.14.1"
 
 [package.dependencies]
-Rtree = ">=0.8.3"
-Shapely = ">=1.6"
+Rtree = ">=0.9"
+Shapely = ">=1.7"
 descartes = ">=1.1"
-geopandas = ">=0.3"
-matplotlib = ">=2.0"
-networkx = ">=2.0"
-numpy = ">=1.13"
-pandas = ">=0.20"
-requests = ">=2.18"
+geopandas = ">=0.7"
+matplotlib = ">=3.2"
+networkx = ">=2.4"
+numpy = ">=1.18"
+pandas = ">=1.0"
+pyproj = ">=2.6"
+requests = ">=2.23"
 
 [package.extras]
-folium = ["folium"]
+balltree = ["scikit-learn (>=0.23)"]
+folium = ["folium (>=0.11)"]
+kdtree = ["scipy (>=1.4)"]
 
 [[package]]
 category = "main"
@@ -708,7 +710,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "6060233a0bbbe0f18c3f9e6143796045ac3ca59f7749b2589b3f5bb110519610"
+content-hash = "71039b0d812f8057571146f351c7df28099c3459e03da0ea3c027e9e7f9ae9bb"
 lock-version = "1.0"
 python-versions = "^3.6.1"
 
@@ -798,8 +800,8 @@ geojson = [
     {file = "geojson-2.5.0.tar.gz", hash = "sha256:6e4bb7ace4226a45d9c8c8b1348b3fc43540658359f93c3f7e03efa9f15f658a"},
 ]
 geopandas = [
-    {file = "geopandas-0.3.0-py2.py3-none-any.whl", hash = "sha256:38ec319ce8be344728cf124847251952af49adea8d38229723a55cc1ea473d44"},
-    {file = "geopandas-0.3.0.tar.gz", hash = "sha256:e63bb32a3e516d8c9bcd149c22335575defdc5896c8bdf15c836608f152a920b"},
+    {file = "geopandas-0.8.2-py2.py3-none-any.whl", hash = "sha256:8f53aa98e4ddb054afc46d289c930e96267d32c35c3dc685721ec2fddee77e60"},
+    {file = "geopandas-0.8.2.tar.gz", hash = "sha256:aa9ae82e4e6b52efa244bd4b8bd2363d66693e5592ad1a0f52b6afa8c36348cb"},
 ]
 identify = [
     {file = "identify-1.5.14-py2.py3-none-any.whl", hash = "sha256:e0dae57c0397629ce13c289f6ddde0204edf518f557bfdb1e56474aa143e77c3"},
@@ -935,8 +937,8 @@ numpy = [
     {file = "numpy-1.19.5.zip", hash = "sha256:a76f502430dd98d7546e1ea2250a7360c065a5fdea52b2dffe8ae7180909b6f4"},
 ]
 osmnx = [
-    {file = "osmnx-0.6-py2.py3-none-any.whl", hash = "sha256:26c625138ee32ee6bf43662eeb6300d5467610067ea8b9bb549781ccdabebc89"},
-    {file = "osmnx-0.6.tar.gz", hash = "sha256:c038133d987befd38a6bdfaf478851d1d8dbf6f2c73bf7c6793956028562287c"},
+    {file = "osmnx-0.14.1-py2.py3-none-any.whl", hash = "sha256:aaa23620a24f2b3ea52450104e1a80c9bebb181129e1be35321b9a4531c521a9"},
+    {file = "osmnx-0.14.1.tar.gz", hash = "sha256:08d78491922af09b66df6a5f64756abc5f0843f7da19e84db17cd567fdfd6fc7"},
 ]
 overpass = [
     {file = "overpass-0.5.6.tar.gz", hash = "sha256:635760418a5d333ca21f964783086ec106fac9db610158dcd3d4f7f15bc75b6c"},

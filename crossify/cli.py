@@ -33,7 +33,7 @@ USEFUL_TAGS_PATH = [
 
 ox.utils.config(
     cache_folder=path.join(path.dirname(__file__), "../cache"),
-    useful_tags_path=USEFUL_TAGS_PATH,
+    useful_tags_way=USEFUL_TAGS_PATH,
     use_cache=True,
 )
 
@@ -116,8 +116,8 @@ def core(sidewalks, outfile, opensidewalks=False):
     click.echo("Extracting geospatial data from street graph...", nl=False)
 
     # Get the undirected street graph
-    G_undirected_u = ox.save_load.get_undirected(G_streets_u)
-    streets = ox.save_load.graph_to_gdfs(G_undirected_u, nodes=False, edges=True)
+    G_undirected_u = ox.utils_graph.get_undirected(G_streets_u)
+    streets = ox.utils_graph.graph_to_gdfs(G_undirected_u, nodes=False, edges=True)
     streets.crs = sidewalks_u.crs
 
     click.echo("Done")
