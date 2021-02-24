@@ -15,14 +15,11 @@ def make_crossings(intersections_dict, sidewalks):
 
     # TODO: vectorize these operations for performance improvement?
     for i, (ixn, data) in enumerate(intersections_dict.items()):
-        ixn_dat.append({
-            'geometry': data['geometry'],
-            'ixn': i
-        })
-        for street in data['streets']:
+        ixn_dat.append({"geometry": data["geometry"], "ixn": i})
+        for street in data["streets"]:
             # Protect against invalid inputs
-            street['layer'] = validators.transform_layer(street['layer'])
-            new_crossing = make_crossing(street, sidewalks, data['streets'])
+            street["layer"] = validators.transform_layer(street["layer"])
+            new_crossing = make_crossing(street, sidewalks, data["streets"])
             if new_crossing is not None:
                 st_crossings.append(new_crossing)
 
@@ -30,7 +27,7 @@ def make_crossings(intersections_dict, sidewalks):
         return None
 
     st_crossings = gpd.GeoDataFrame(st_crossings)
-    st_crossings = st_crossings[st_crossings.type == 'LineString']
+    st_crossings = st_crossings[st_crossings.type == "LineString"]
     st_crossings = st_crossings[st_crossings.is_valid]
 
     # Remove duplicates
@@ -40,7 +37,7 @@ def make_crossings(intersections_dict, sidewalks):
         return str([p1, p2])
 
     comparison = st_crossings.geometry.apply(comp)
-    comparison.name = 'comp'
+    comparison.name = "comp"
     unique = st_crossings.groupby(comparison).first()
     st_crossings = gpd.GeoDataFrame(unique.reset_index())
     st_crossings.crs = crs
@@ -49,7 +46,7 @@ def make_crossings(intersections_dict, sidewalks):
 
 
 def make_crossing(street, sidewalks, streets_list, max_length=30, step_size=2):
-    '''Attempts to create a street crossing line given a street segment and
+    """Attempts to create a street crossing line given a street segment and
     a GeoDataFrame sidewalks dataset. The street and sidewalks should have
     these properties:
 
@@ -74,13 +71,13 @@ def make_crossing(street, sidewalks, streets_list, max_length=30, step_size=2):
     :returns: If a crossing can be made, a shapely Linestring. Otherwise, None.
     :rtype: shapely.geometry.LineString or None
 
-    '''
+    """
 
-    '''
+    """
     'Walk' along the street in step_size-meter increments, finding the closest
     sidewalk + the distance along each end. Reject those with inappropriate
     angles and differences in length.
-    '''
+    """
     # Clip street in half: don't want to cross too far in.
     # TODO: this should be done in a more sophisticated way. e.g. dead ends
     # shouldn't require this
@@ -89,23 +86,23 @@ def make_crossing(street, sidewalks, streets_list, max_length=30, step_size=2):
     MAX_DIST_ALONG = 25
     OFFSET = max_length / 2
 
-    st_distance = min(street['geometry'].length / 2, MAX_DIST_ALONG)
+    st_distance = min(street["geometry"].length / 2, MAX_DIST_ALONG)
     start_dist = min(START_DIST, st_distance / 2)
-    layer = street['layer']
+    layer = street["layer"]
 
     # Create buffer for the street search area, one for each side, then find
     # the sidewalks intersecting that buffer - use as candidates for
     # right/left
-    sw_left = get_side_sidewalks(OFFSET, 'left', street, sidewalks)
-    sw_right = get_side_sidewalks(OFFSET, 'right', street, sidewalks)
+    sw_left = get_side_sidewalks(OFFSET, "left", street, sidewalks)
+    sw_right = get_side_sidewalks(OFFSET, "right", street, sidewalks)
 
     if sw_left.empty or sw_right.empty:
         # One of the sides has no sidewalks to connect to! Abort!
         return None
 
     # Restrict to sidewalks on the same 'layer' as the input
-    sw_left = sw_left[sw_left['layer'] == layer]
-    sw_right = sw_right[sw_right['layer'] == layer]
+    sw_left = sw_left[sw_left["layer"] == layer]
+    sw_right = sw_right[sw_right["layer"] == layer]
 
     if sw_left.empty or sw_right.empty:
         # One of the sides has no sidewalks to connect to! Abort!
@@ -114,29 +111,19 @@ def make_crossing(street, sidewalks, streets_list, max_length=30, step_size=2):
     crossings = []
     for dist in np.arange(start_dist, st_distance, step_size):
         # Grab a point along the outgoing street
-        st_geom = street['geometry']
+        st_geom = street["geometry"]
         point = st_geom.interpolate(dist)
 
-        crossing1, left1, right1 = crossing_from_point(point, sw_left,
-                                                       sw_right)
-        crossing2, left2, right2 = crossing_from_point(point, sw_right,
-                                                       sw_left)
+        crossing1, left1, right1 = crossing_from_point(point, sw_left, sw_right)
+        crossing2, left2, right2 = crossing_from_point(point, sw_right, sw_left)
 
-        crossings.append({
-            'geometry': crossing1,
-            'sw_left': left1,
-            'sw_right': right1
-        })
-        crossings.append({
-            'geometry': crossing2,
-            'sw_left': left2,
-            'sw_right': right2
-        })
+        crossings.append({"geometry": crossing1, "sw_left": left1, "sw_right": right1})
+        crossings.append({"geometry": crossing2, "sw_left": left2, "sw_right": right2})
 
     candidates = []
     for crossing in crossings:
-        geometry_cr = crossing['geometry']
-        geometry_st = street['geometry']
+        geometry_cr = crossing["geometry"]
+        geometry_st = street["geometry"]
         #
         # Filters
         #
@@ -150,9 +137,9 @@ def make_crossing(street, sidewalks, streets_list, max_length=30, step_size=2):
         for st in streets_list:
             if st == street:
                 continue
-            if st['layer'] != layer:
+            if st["layer"] != layer:
                 continue
-            other_streets.append(st['geometry'])
+            other_streets.append(st["geometry"])
 
         if other_streets:
             if crosses_other_streets(geometry_cr, other_streets):
@@ -160,15 +147,15 @@ def make_crossing(street, sidewalks, streets_list, max_length=30, step_size=2):
 
         # The sides have passed the filter! Add their data to the list
         ixn = geometry_st.intersection(geometry_cr)
-        if ixn.type != 'Point':
+        if ixn.type != "Point":
             continue
 
         crossing_distance = geometry_st.project(ixn)
-        crossing['search_distance'] = dist
-        crossing['crossing_distance'] = crossing_distance
+        crossing["search_distance"] = dist
+        crossing["crossing_distance"] = crossing_distance
         st_seg = segment_at_distance(geometry_st, dist)
-        crossing['dotproduct'] = dotproduct(geometry_cr, st_seg)
-        crossing['layer'] = layer
+        crossing["dotproduct"] = dotproduct(geometry_cr, st_seg)
+        crossing["layer"] = layer
 
         candidates.append(crossing)
 
@@ -185,9 +172,9 @@ def make_crossing(street, sidewalks, streets_list, max_length=30, step_size=2):
     # lengths * distance_metric
     def cost(candidate):
         terms = []
-        terms.append(candidate['geometry'].length)
-        terms.append(2e-1 * candidate['crossing_distance'])
-        terms.append(5e2 * abs(candidate['dotproduct']))
+        terms.append(candidate["geometry"].length)
+        terms.append(2e-1 * candidate["crossing_distance"])
+        terms.append(5e2 * abs(candidate["dotproduct"]))
         return sum(terms)
 
     best = sorted(candidates, key=cost)[0]
@@ -197,18 +184,20 @@ def make_crossing(street, sidewalks, streets_list, max_length=30, step_size=2):
 
 def get_side_sidewalks(offset, side, street, sidewalks):
     # TODO: do this once for the whole street
-    offset = street['geometry'].parallel_offset(offset, side, 0, 1, 1)
-    if offset.type == 'MultiLineString':
+    offset = street["geometry"].parallel_offset(offset, side, 0, 1, 1)
+    if offset.type == "MultiLineString":
         # Convert to LineString
         coords = []
         for geom in offset.geoms:
             coords += list(geom.coords)
         offset = LineString(coords)
-    if side == 'left':
+    if side == "left":
         offset.coords = offset.coords[::-1]
-    st_buffer = Polygon(list(street['geometry'].coords) +
-                        list(offset.coords) +
-                        [street['geometry'].coords[0]])
+    st_buffer = Polygon(
+        list(street["geometry"].coords)
+        + list(offset.coords)
+        + [street["geometry"].coords[0]]
+    )
     query = sidewalks.sindex.intersection(st_buffer.bounds, objects=True)
     query_sidewalks = sidewalks.loc[[q.object for q in query]]
     side_sidewalks = query_sidewalks[query_sidewalks.intersects(st_buffer)]
@@ -222,11 +211,11 @@ def crossing_from_point(point, sidewalks1, sidewalks2):
     # sidewalk, then draw a line.
 
     idx1 = sidewalks1.distance(point).sort_values().index[0]
-    geometry1 = sidewalks1.loc[idx1, 'geometry']
+    geometry1 = sidewalks1.loc[idx1, "geometry"]
     point1 = geometry1.interpolate(geometry1.project(point))
 
     idx2 = sidewalks2.distance(point1).sort_values().index[0]
-    geometry2 = sidewalks2.loc[idx2, 'geometry']
+    geometry2 = sidewalks2.loc[idx2, "geometry"]
     point2 = geometry2.interpolate(geometry2.project(point))
 
     crossing = LineString([point1, point2])
@@ -249,27 +238,26 @@ def cut(line, distance):
     for i, p in enumerate(coords):
         pd = line.project(Point(p))
         if pd == distance:
-            return [
-                LineString(coords[:i+1]),
-                LineString(coords[i:])]
+            return [LineString(coords[: i + 1]), LineString(coords[i:])]
         if pd > distance:
             cp = line.interpolate(distance)
             return [
                 LineString(coords[:i] + [(cp.x, cp.y)]),
-                LineString([(cp.x, cp.y)] + coords[i:])]
+                LineString([(cp.x, cp.y)] + coords[i:]),
+            ]
 
 
 def segment_at_distance(line, distance):
     # Isolate the linestring segment at a specific distance
     if distance <= 0.0 or distance >= line.length:
-        raise ValueError('Distance < 0 or longer than LineString')
+        raise ValueError("Distance < 0 or longer than LineString")
     coords = list(line.coords)
     for i, p in enumerate(coords):
         pd = line.project(Point(p))
         if pd == distance or pd > distance:
             # i can't be 0, otherwise distance would be <= 0
             # Segment located!
-            return LineString(coords[i - 1:i + 1])
+            return LineString(coords[i - 1 : i + 1])
 
 
 def dotproduct(segment1, segment2):
