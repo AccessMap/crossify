@@ -6,7 +6,7 @@ authors = ["Nick Bolten <nbolten@gmail.com>"]
 license = "Apache-2.0"
 
 [tool.poetry.scripts]
-crossify = "crossify.__main__:crossify"
+crossify = "crossify.cli:crossify"
 
 [tool.poetry.dependencies]
 python = "^3.6.1"

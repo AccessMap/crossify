@@ -16,7 +16,7 @@ install_requires = \
  'shapely>=1.6,<2.0']
 
 entry_points = \
-{'console_scripts': ['crossify = crossify.__main__:crossify']}
+{'console_scripts': ['crossify = crossify.cli:crossify']}
 
 setup_kwargs = {
     'name': 'crossify',
