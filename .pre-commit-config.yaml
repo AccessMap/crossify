@@ -25,10 +25,10 @@ repos:
       language: system
       files: "^pyproject.toml$"
       pass_filenames: false
-      #     - id: pytest
-      #       name: pytest
-      #       language: system
-      #       entry: pytest
-      #       pass_filenames: false
-      #       always_run: true
-      #       stages: [commit, push]
+    - id: pytest
+      name: pytest
+      language: system
+      entry: pytest
+      pass_filenames: false
+      always_run: true
+      stages: [commit, push]
