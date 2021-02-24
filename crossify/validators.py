@@ -12,7 +12,8 @@ def validate_sidewalks(sidewalks):
         return sidewalks_ls
     else:
         raise Exception(
-            "No LineStrings in sidewalks dataset: are they" + " MultiLineStrings?"
+            "No LineStrings in sidewalks dataset: are they"
+            + " MultiLineStrings?"
         )
 
 
@@ -26,7 +27,8 @@ def validate_streets(streets):
         return streets_ls
     else:
         raise Exception(
-            "No LineStrings in streets dataset: are they" + " MultiLineStrings?"
+            "No LineStrings in streets dataset: are they"
+            + " MultiLineStrings?"
         )
 
 

@@ -114,11 +114,19 @@ def make_crossing(street, sidewalks, streets_list, max_length=30, step_size=2):
         st_geom = street["geometry"]
         point = st_geom.interpolate(dist)
 
-        crossing1, left1, right1 = crossing_from_point(point, sw_left, sw_right)
-        crossing2, left2, right2 = crossing_from_point(point, sw_right, sw_left)
+        crossing1, left1, right1 = crossing_from_point(
+            point, sw_left, sw_right
+        )
+        crossing2, left2, right2 = crossing_from_point(
+            point, sw_right, sw_left
+        )
 
-        crossings.append({"geometry": crossing1, "sw_left": left1, "sw_right": right1})
-        crossings.append({"geometry": crossing2, "sw_left": left2, "sw_right": right2})
+        crossings.append(
+            {"geometry": crossing1, "sw_left": left1, "sw_right": right1}
+        )
+        crossings.append(
+            {"geometry": crossing2, "sw_left": left2, "sw_right": right2}
+        )
 
     candidates = []
     for crossing in crossings:
@@ -201,7 +209,9 @@ def get_side_sidewalks(offset, side, street, sidewalks):
     st_buffer_gdf = gpd.GeoDataFrame(geometry=[st_buffer])
     # FIXME: standardize handling of CRS data
     st_buffer_gdf.crs = sidewalks.crs
-    side_sidewalks = gpd.sjoin(sidewalks, st_buffer_gdf, how="inner", op="intersects")
+    side_sidewalks = gpd.sjoin(
+        sidewalks, st_buffer_gdf, how="inner", op="intersects"
+    )
 
     return side_sidewalks
 

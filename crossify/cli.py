@@ -117,7 +117,9 @@ def core(sidewalks, outfile, opensidewalks=False):
 
     # Get the undirected street graph
     G_undirected_u = ox.utils_graph.get_undirected(G_streets_u)
-    streets = ox.utils_graph.graph_to_gdfs(G_undirected_u, nodes=False, edges=True)
+    streets = ox.utils_graph.graph_to_gdfs(
+        G_undirected_u, nodes=False, edges=True
+    )
     streets.crs = sidewalks_u.crs
 
     click.echo("Done")
