@@ -1,0 +1,34 @@
+repos:
+    # -   repo: https://github.com/ambv/black
+    #     rev: 19.10b0
+    #     hooks:
+    #     - id: black
+    #       language_version: python3.8
+    #       files: "^./setup.py"
+-   repo: local
+    hooks:
+    - id: export_setup_py
+      name: export_setup_py
+      entry: "poetry run python ./create_setup.py"
+      language: system
+      files: "^pyproject.toml$"
+      pass_filenames: false
+    - id: export_requirements
+      name: export_requirements
+      entry: "poetry export -f requirements.txt --output requirements.txt"
+      language: system
+      files: "^pyproject.toml$"
+      pass_filenames: false
+    - id: export_dev_requirements
+      name: export_dev_requirements
+      entry: "poetry export --dev -f requirements.txt --output requirements-dev.txt"
+      language: system
+      files: "^pyproject.toml$"
+      pass_filenames: false
+      #     - id: pytest
+      #       name: pytest
+      #       language: system
+      #       entry: pytest
+      #       pass_filenames: false
+      #       always_run: true
+      #       stages: [commit, push]
